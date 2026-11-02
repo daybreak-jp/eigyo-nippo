@@ -72,7 +72,7 @@ h3{font-size:14px;margin:0;font-weight:700}
 .f{display:flex;flex-direction:column;gap:6px;min-width:0}
 .f>label,.f>.lt{font-size:13px;font-weight:700;color:var(--sub)}
 .req::after{content:"必須";font-size:10px;font-weight:600;color:var(--warn);margin-left:6px;border:1px solid currentColor;border-radius:4px;padding:0 4px;vertical-align:1px}
-input[type=text],input[type=date],input[type=search],input[type=password],input:not([type]),input[inputmode],select,textarea{width:100%;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
+input[type=text],input[type=email],input[type=date],input[type=search],input[type=password],input:not([type]),input[inputmode],select,textarea{width:100%;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
 textarea{resize:vertical;min-height:64px}
 .trow{display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center}
 input[type=time]{width:100%;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px}
@@ -266,9 +266,26 @@ dialog.wide{width:min(760px,calc(100vw - 24px))}
   <div class="box">
     <h1>営業日報</h1>
     <div class="muted">株式会社ディブレイク 営業</div>
-    <input type="password" id="passInput" placeholder="パスコード" autocomplete="current-password">
-    <button class="btn" id="passBtn">開く</button>
-    <div class="msg err" id="passErr" hidden>パスコードが違います</div>
+    <div id="lkForm" hidden>
+      <div class="muted" id="lkTitle" style="font-weight:700">ログイン</div>
+      <input type="email" id="lkEmail" placeholder="メールアドレス" autocomplete="username" inputmode="email">
+      <input type="password" id="lkPass" placeholder="パスワード" autocomplete="current-password">
+      <button class="btn" id="lkGo">ログイン</button>
+      <div class="msg" id="lkMsg"></div>
+      <div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn ghost sm" id="lkMode">はじめて使う（パスワードを作る）</button>
+        <button type="button" class="btn ghost sm" id="lkReset">パスワードを忘れた</button>
+      </div>
+    </div>
+    <div id="lkWait" class="muted">確認しています…</div>
+    <div id="lkStop" hidden>
+      <div class="msg" id="lkStopMsg"></div>
+      <div class="row" style="justify-content:center;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn ghost sm" id="lkResend" hidden>確認メールを送り直す</button>
+        <button type="button" class="btn ghost sm" id="lkRetry" hidden>確認できたので開く</button>
+        <button type="button" class="btn ghost sm" id="lkOut">別のアドレスでログイン</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -478,10 +495,10 @@ dialog.wide{width:min(760px,calc(100vw - 24px))}
 
 <!-- 使う人 -->
 <dialog id="userDlg">
-  <div class="dh"><h2>この端末を使う人</h2></div>
+  <div class="dh"><h2>ログイン中の人</h2></div>
   <div class="db">
-    <div class="hint">メモなどを書いた人として記録されます。端末ごとに覚えるので、最初に1回選べばOKです。ほかの人が使うときは、上の 👤 から切り替えてください。</div>
-    <div class="chips" id="userList"></div>
+    <div id="userList" style="display:grid;gap:4px"></div>
+    <div class="hint">メモや日報を書いた人として、この名前で記録されます。</div>
     <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:0">
     <div class="row"><span class="muted" id="roleNote"></span><button type="button" class="btn ghost sm sp" id="logoutBtn">ログアウト</button></div>
     <div class="row"><button type="button" class="btn ghost sm" id="userClose">閉じる</button></div>
@@ -500,11 +517,23 @@ dialog.wide{width:min(760px,calc(100vw - 24px))}
     <div class="f"><label for="sRoute">獲得経路の選択肢（1行に1つ）</label><textarea id="sRoute" rows="4"></textarea></div>
     <div class="row"><button class="btn" id="sSave">設定を保存</button><span class="msg" id="sMsg"></span></div>
     <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:0">
+    <div class="f"><span class="lt">ログインできる人</span>
+      <div class="hint">ここに登録したメールアドレスの人だけがアプリを開けます。登録したら、本人に「はじめて使う」から自分でパスワードを作ってもらいます。</div>
+      <div id="uList" style="display:grid;gap:6px"></div>
+      <div class="row" style="flex-wrap:wrap;gap:6px">
+        <input type="email" id="uEmail" placeholder="メールアドレス" style="flex:2 1 200px">
+        <input id="uName" placeholder="名前（担当者名）" style="flex:1 1 120px">
+        <select id="uRole" style="flex:1 1 140px"><option value="member">営業（ふつう）</option><option value="viewer">閲覧（社長など）</option><option value="master">管理者（設定も使える）</option></select>
+        <button class="btn sm" id="uAdd">追加</button>
+      </div>
+      <span class="msg" id="uMsg"></span>
+    </div>
+    <hr style="border:0;border-top:1px solid var(--line);width:100%;margin:0">
     <div class="f"><span class="lt">読み込む範囲</span>
       <div class="hint">軽く動かすため、ふだんは今年度（4月〜）の日報だけを読み込みます。案件はすべて読み込みます。</div>
       <div class="chips sm" id="sRange"></div>
     </div>
-    <div class="f"><span class="lt">見本データ</span>
+    <div class="f" id="sampleBox" hidden><span class="lt">見本データ</span>
       <div class="hint">説明用の見本（今年度4月〜今日、担当者ごと）を入れます。会社名に「(見本)」が付き、本物の記録を消さずにまとめて消せます。押し直すと入れ替わります。</div>
       <div class="row"><button class="btn ghost sm" id="sSample">見本データを入れる</button><button class="btn ghost sm" id="sSampleDel">見本データを消す</button><span class="msg" id="sSampleMsg"></span></div>
     </div>
@@ -514,6 +543,7 @@ dialog.wide{width:min(760px,calc(100vw - 24px))}
 <div class="toast" id="toast" hidden></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 /* =========================================================
@@ -521,16 +551,18 @@ dialog.wide{width:min(760px,calc(100vw - 24px))}
    ① 案件を登録 → ② 日報は案件を選んで追記 → ③ 日報一覧 → ④ 週報 → ⑤ 集計
    コレクション：sr_cases（案件）／ sr_reports（日報）／ sr_settings ／ sr_monthly
    ========================================================= */
-const PASSCODES={'daybreak2026':'member','daybreak-master':'master'};   // ← パスコードはここで変更（master＝設定も使える）
+/* ログインは Firebase Authentication（メール＋パスワード）。sr_users に登録されたアドレスだけが使える。
+   接続先の設定（下）は公開して問題ない値。データはFirestoreのルールで守る。 */
 const firebaseConfig={
-  apiKey:"AIzaSyD8JW9526h0TKa9_hEaGrmlpVG8NeW4c3Q",
-  authDomain:"hirataku1102.firebaseapp.com",
-  projectId:"hirataku1102",
-  storageBucket:"hirataku1102.firebasestorage.app",
-  messagingSenderId:"219252490669",
-  appId:"1:219252490669:web:bb3d9dc019a17a5a01e124"
+  apiKey:"AIzaSyCNc8B-jrYM6Sa0xp4d24fOTbTorNjVpfw",
+  authDomain:"daybreak-jp.firebaseapp.com",
+  projectId:"daybreak-jp",
+  storageBucket:"daybreak-jp.firebasestorage.app",
+  messagingSenderId:"510126103874",
+  appId:"1:510126103874:web:ba98754bee69f5e857fcdb"
 };
-const C={cases:'sr_cases',reports:'sr_reports',settings:'sr_settings',monthly:'sr_monthly'};
+const C={cases:'sr_cases',reports:'sr_reports',settings:'sr_settings',monthly:'sr_monthly',users:'sr_users'};
+const ROLES={master:'管理者',member:'営業',viewer:'閲覧'};
 
 /* ---- 選択肢 ---- */
 const KINDS=['営業','社内'];
@@ -538,7 +570,7 @@ const KUBUN=['新規','既存'];
 const METHODS=['訪問','電話','メール','オンライン','社内作業','その他'];
 const STAGES={'営業':['未接触','担当者確認','商談中','見積提出'],'社内':['未着手','進行中']};
 const CHECKS=['未確認','確認済み','要相談'];
-const DEF={staff:['平生','小柴'],target:100000,
+const DEF={staff:[],target:100000,
   salesTypes:['新規獲得','料金改定','追加提案（回数・品目）','その他営業'],
   internalTypes:['許可更新','社内業務','その他'],
   industries:['飲食業','小売業','製造業','建設業','医療・福祉','不動産・管理会社','事務所・オフィス','宿泊業','教育','サービス業','その他'],
@@ -608,22 +640,53 @@ const S={ready:false,settings:{...DEF},cases:new Map(),reports:[],range:LS.get('
 let cur='cases';
 
 /* ---- Firebase ---- */
-let db=null;
+let db=null,auth=null;
 if(typeof firebase==='undefined'){showErr('データベースの読み込みに失敗しました。電波の良い場所でリロードしてください。')}
-else{firebase.initializeApp(firebaseConfig);db=firebase.firestore();db.enablePersistence({synchronizeTabs:true}).catch(()=>{})}
+else{firebase.initializeApp(firebaseConfig);db=firebase.firestore();db.enablePersistence({synchronizeTabs:true}).catch(()=>{});auth=firebase.auth()}
 function commit(batch){return new Promise(res=>{let done=false;batch.commit().then(()=>{done=true;res('ok')}).catch(e=>{done=true;res(e)});setTimeout(()=>{if(!done)res('pending')},2500)})}
 const okr=r=>r==='ok'||r==='pending';
 function put(b,col,o){const{id,...body}=o;b.set(db.collection(col).doc(id),body)}
 
-/* ---- ロック（8時間操作がなければ再確認） ---- */
-function unlocked(){return Date.now()-LS.get('unlock',0)<8*3600e3&&!!LS.get('role','')}
-const isMaster=()=>LS.get('role','')==='master';
-function applyRole(){$('setBtn').hidden=!isMaster();$('roleNote').textContent=isMaster()?'管理者（設定も使える）でログイン中':'メンバーでログイン中'}
-function logout(){LS.set('unlock',0);LS.set('role','');location.replace(location.pathname+location.search)}
-function touch(){LS.set('unlock',Date.now())}
-['click','keydown'].forEach(ev=>document.addEventListener(ev,()=>{if(unlocked())touch()},{passive:true}));
-function tryUnlock(){const role=PASSCODES[$('passInput').value];if(role){LS.set('role',role);touch();$('lock').hidden=true;start()}else $('passErr').hidden=false}
-$('passBtn').onclick=tryUnlock;$('passInput').addEventListener('keydown',e=>{if(e.key==='Enter')tryUnlock()});
+/* ---- ログイン（メール＋パスワード） ---- */
+let ME=null;   // {email,name,role}
+const isMaster=()=>!!ME&&ME.role==='master';
+function applyRole(){$('setBtn').hidden=!isMaster();$('roleNote').textContent=ME?`${ROLES[ME.role]||ME.role}でログイン中`:''}
+function logout(){auth.signOut().finally(()=>location.replace(location.pathname+location.search))}
+const LK={mode:'login'};
+function lkShow(part,msg,isErr){$('lock').hidden=false;['lkForm','lkWait','lkStop'].forEach(k=>$(k).hidden=k!==part);
+  if(part==='lkStop'){$('lkStopMsg').textContent=msg||'';$('lkStopMsg').className='msg'+(isErr?' err':'')}}
+function lkMsg(t,isErr){$('lkMsg').textContent=t||'';$('lkMsg').className='msg'+(isErr?' err':'')}
+function lkSetMode(m){LK.mode=m;const reg=m==='register';$('lkTitle').textContent=reg?'はじめて使う：パスワードを作る':'ログイン';
+  $('lkGo').textContent=reg?'登録して確認メールを送る':'ログイン';$('lkMode').textContent=reg?'ログインに戻る':'はじめて使う（パスワードを作る）';
+  $('lkPass').placeholder=reg?'パスワード（8文字以上）':'パスワード';$('lkPass').autocomplete=reg?'new-password':'current-password';$('lkReset').hidden=reg;lkMsg('')}
+const AUTHERR={'auth/invalid-email':'メールアドレスの形が正しくありません','auth/invalid-credential':'メールアドレスかパスワードが違います','auth/wrong-password':'メールアドレスかパスワードが違います','auth/user-not-found':'メールアドレスかパスワードが違います',
+  'auth/email-already-in-use':'このアドレスはもう登録されています。「ログインに戻る」からログインしてください','auth/weak-password':'パスワードは8文字以上にしてください','auth/too-many-requests':'何度も失敗したため一時的に止まっています。少し待ってからもう一度どうぞ','auth/network-request-failed':'通信できませんでした。電波の良い場所でもう一度どうぞ'};
+const authErr=e=>AUTHERR[e&&e.code]||('うまくいきませんでした（'+((e&&e.code)||e)+'）');
+async function lkSubmit(){const em=$('lkEmail').value.trim().toLowerCase(),pw=$('lkPass').value;
+  if(!em||!pw){lkMsg('メールアドレスとパスワードを入れてください',true);return}
+  $('lkGo').disabled=true;lkMsg('');
+  try{if(LK.mode==='register'){if(pw.length<8){lkMsg('パスワードは8文字以上にしてください',true);return}
+      const r=await auth.createUserWithEmailAndPassword(em,pw);await r.user.sendEmailVerification()}
+    else await auth.signInWithEmailAndPassword(em,pw)}
+  catch(e){lkMsg(authErr(e),true)}finally{$('lkGo').disabled=false}}
+$('lkGo').onclick=lkSubmit;['lkEmail','lkPass'].forEach(id=>$(id).addEventListener('keydown',e=>{if(e.key==='Enter')lkSubmit()}));
+$('lkMode').onclick=()=>lkSetMode(LK.mode==='login'?'register':'login');
+$('lkReset').onclick=async()=>{const em=$('lkEmail').value.trim().toLowerCase();if(!em){lkMsg('先にメールアドレスを入れてから押してください',true);return}
+  try{await auth.sendPasswordResetEmail(em);lkMsg('パスワードを作り直すメールを送りました（届かないときは迷惑メールも確認してください）')}catch(e){lkMsg(authErr(e),true)}};
+$('lkOut').onclick=()=>auth.signOut();
+$('lkResend').onclick=async()=>{try{await auth.currentUser.sendEmailVerification();toast('確認メールを送り直しました')}catch(e){toast(authErr(e))}};
+$('lkRetry').onclick=async()=>{try{await auth.currentUser.reload();await auth.currentUser.getIdToken(true)}catch(e){}checkUser(auth.currentUser)};
+async function checkUser(u){
+  $('lkResend').hidden=$('lkRetry').hidden=true;
+  if(!u){ME=null;lkSetMode(LK.mode);lkShow('lkForm');setTimeout(()=>$('lkEmail').focus(),50);return}
+  const em=(u.email||'').toLowerCase();
+  if(!u.emailVerified){lkShow('lkStop',`${em} に確認メールを送りました。メールの中のリンクを押してから、「確認できたので開く」を押してください。（届かないときは迷惑メールも確認してください）`);
+    $('lkResend').hidden=$('lkRetry').hidden=false;$('lkRetry').textContent='確認できたので開く';return}
+  lkShow('lkWait');
+  let d=null;try{const s=await db.collection(C.users).doc(em).get();d=s.exists?s.data():null}catch(e){d=null}
+  if(!d){lkShow('lkStop',`${em} はまだ登録されていません。管理者に、このアドレスを登録してもらってください。`,true);$('lkRetry').hidden=false;$('lkRetry').textContent='登録してもらったので開く';return}
+  ME={email:em,name:d.name||em,role:d.role||'member'};
+  $('lock').hidden=true;start()}
 
 /* ---- 読み込み ---- */
 async function load(){
@@ -748,18 +811,13 @@ let noteEdit=null;
 function resetNote(){noteEdit=null;$('nText').value='';$('nMsg').textContent='';$('nAdd').textContent='メモを追加';$('nCancel').hidden=true;$('nDel').hidden=true;$('nMode').textContent=''}
 /* メモは「今日・いま使っている人」で自動記録（使っている人＝最後に選んだ担当者） */
 /* この端末を使う人（ログインを入れたら、ログインした本人に置き換わる） */
-const meNow=()=>{const u=LS.get('user','');return S.settings.staff.includes(u)?u:''};
+const meNow=()=>ME?ME.name:'';
 function renderUser(){const u=meNow();$('userName').textContent=u||'未設定';$('userBtn').classList.toggle('unset',!u)}
-let afterUser=null;
-function askUser(then){afterUser=then||null;const u=meNow();
-  $('userList').innerHTML=S.settings.staff.map(n=>`<button type="button" data-v="${esc(n)}" class="${n===u?'on':''}">${esc(n)}</button>`).join('')||'<span class="muted">設定で担当者を登録してください</span>';
+function askUser(){if(!ME)return;$('userList').innerHTML=`<b style="font-size:1.1em">${esc(ME.name)}</b><span class="muted">${esc(ME.email)}</span>`;applyRole();
   if(!$('userDlg').open)$('userDlg').showModal()}
-$('userList').onclick=e=>{const b=e.target.closest('button');if(!b)return;LS.set('user',b.dataset.v);LS.set('me',b.dataset.v);$('userDlg').close();renderUser();toast(`この端末を使う人：${b.dataset.v}`);
-  if(!$('fStaff').dataset.touched&&S.settings.staff.includes(b.dataset.v)){$('fStaff').value=b.dataset.v;renderDay()}
-  const f=afterUser;afterUser=null;if(f)f()};
 $('userBtn').onclick=()=>askUser();
 $('userClose').onclick=()=>$('userDlg').close();
-$('logoutBtn').onclick=()=>{if(confirm('ログアウトしますか？\n次に開くときにパスコードが必要になります。'))logout()};
+$('logoutBtn').onclick=()=>{if(confirm('ログアウトしますか？\n次に開くときにメールアドレスとパスワードが必要になります。'))logout()};
 $('nCancel').onclick=resetNote;
 async function saveNotes(c,notes,okText){const n={...c,notes,updatedAt:Date.now(),editedDate:today()};const b=db.batch();put(b,C.cases,n);const r=await commit(b);
   if(!okr(r)){$('nMsg').textContent='保存できませんでした';$('nMsg').className='msg err';return false}S.cases.set(n.id,n);toast(okText);renderCaseExtra(n);return true}
@@ -1268,8 +1326,31 @@ let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(drawChart,1
 $('setBtn').onclick=()=>{const s=S.settings;
   $('sStaff').value=s.staff.join('\n');$('sTarget').value=s.target;$('sSalesTypes').value=s.salesTypes.join('\n');$('sInternalTypes').value=s.internalTypes.join('\n');$('sInd').value=s.industries.join('\n');$('sRoute').value=s.routes.join('\n');
   $('sRange').innerHTML=[['fy','今年度から（軽い）'],['all','すべて読み込む']].map(([k,v])=>`<button data-r="${k}" class="${S.range===k?'on':''}">${v}</button>`).join('');
-  $('sMsg').textContent='';$('sSampleMsg').textContent='';$('setDlg').showModal()};
+  $('sMsg').textContent='';$('sSampleMsg').textContent='';$('uMsg').textContent='';loadUsers();$('setDlg').showModal()};
 $('setClose').onclick=()=>$('setDlg').close();
+/* ---- ログインできる人（sr_users／ドキュメントID＝メールアドレス小文字） ---- */
+let USERS=[];
+function uMsg(t,isErr){$('uMsg').textContent=t||'';$('uMsg').className='msg'+(isErr?' err':' ok')}
+async function loadUsers(){$('uList').innerHTML='<span class="muted">読み込み中…</span>';
+  try{const s=await db.collection(C.users).get();USERS=s.docs.map(d=>({email:d.id,...d.data()})).sort((x,y)=>(x.name||'').localeCompare(y.name||'','ja'))}catch(e){USERS=[];uMsg('読み込めませんでした',true)}
+  renderUsers()}
+function renderUsers(){$('uList').innerHTML=USERS.map(u=>`<div class="row" style="gap:8px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding:4px 0">
+    <b>${esc(u.name||'')}</b><span class="muted" style="flex:1 1 160px;word-break:break-all">${esc(u.email)}</span><span class="muted">${esc(ROLES[u.role]||u.role||'')}</span>
+    ${u.email===ME.email?'<span class="muted">（自分）</span>':`<button type="button" class="btn ghost sm" data-udel="${esc(u.email)}">外す</button>`}</div>`).join('')||'<span class="muted">まだ登録がありません</span>'}
+$('uList').onclick=async e=>{const b=e.target.closest('[data-udel]');if(!b)return;const em=b.dataset.udel;
+  if(!confirm(`${em} を外しますか？\nこの人はアプリを開けなくなります（書いた日報や案件は残ります）。`))return;
+  const bt=db.batch();bt.delete(db.collection(C.users).doc(em));const r=await commit(bt);if(!okr(r)){uMsg('外せませんでした',true);return}
+  USERS=USERS.filter(u=>u.email!==em);renderUsers();uMsg('外しました')};
+$('uAdd').onclick=async()=>{const em=$('uEmail').value.trim().toLowerCase(),name=$('uName').value.trim(),role=$('uRole').value;
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){uMsg('メールアドレスを正しく入れてください',true);return}
+  if(!name){uMsg('名前を入れてください',true);return}
+  const bt=db.batch();bt.set(db.collection(C.users).doc(em),{name,role,addedBy:ME.email,addedAt:Date.now()});
+  let staffAdded=false;
+  if(role!=='viewer'&&!S.settings.staff.includes(name)){const n={...S.settings,staff:[...S.settings.staff,name]};bt.set(db.collection(C.settings).doc('main'),n);S.settings=n;staffAdded=true}
+  const r=await commit(bt);if(!okr(r)){uMsg('登録できませんでした',true);return}
+  USERS=[...USERS.filter(u=>u.email!==em),{email:em,name,role}];renderUsers();$('uEmail').value='';$('uName').value='';
+  if(staffAdded){$('sStaff').value=S.settings.staff.join('\n');renderAll()}
+  uMsg(`登録しました。${name}さんに「はじめて使う」からパスワードを作ってもらってください${staffAdded?'（担当者にも追加しました）':''}`)};
 const lines=v=>[...new Set(v.split(/\n/).map(x=>x.trim()).filter(Boolean))];
 $('sSave').onclick=async()=>{
   const n={staff:lines($('sStaff').value),target:num($('sTarget').value)||0,salesTypes:lines($('sSalesTypes').value),internalTypes:lines($('sInternalTypes').value),industries:lines($('sInd').value),routes:lines($('sRoute').value)};
@@ -1361,15 +1442,15 @@ function buildSample(){
     });
   });
   const reviews=months.slice(0,-1).map(ym=>({id:`${ym}__all`,good:'管理会社経由の紹介で新規が続いた。見積提出後のフォローが早くできた。',issue:'価格で他社に負けた案件があった。期限を過ぎた案件があった。',next:'見積提出中の案件を月初にまとめて追う。飲食店の多いエリアを重点的に回る。',comment:'',sample:true}));
-  // 売上のバランス調整：3人ほぼ均等、平生（いなければ1人目）が一番低くなるように受注の月額をそろえる
-  const weak=staff.includes('平生')?'平生':staff[0];
+  // 売上のバランス調整：3人ほぼ均等、1人目が一番低くなるように受注の月額をそろえる
+  const weak=staff[0];
   const wonOf=x=>cases.filter(c=>c.staff===x&&c.result==='受注');
   const cxlOf=x=>cases.filter(c=>c.staff===x&&c.result==='解約').reduce((a,c)=>a+c.increase,0);
   const gross=x=>wonOf(x).reduce((a,c)=>a+c.increase,0);
   const avgNet=staff.reduce((a,x)=>a+gross(x)+cxlOf(x),0)/staff.length;
   const others=staff.filter(x=>x!==weak);
   staff.forEach(x=>{
-    const rate=x===weak?0.8:1+0.06*(others.length-1-others.indexOf(x))/Math.max(1,others.length-1);   // 1.06 → 1.00 → … 平生 0.80
+    const rate=x===weak?0.8:1+0.06*(others.length-1-others.indexOf(x))/Math.max(1,others.length-1);   // 1.06 → 1.00 → … 1人目 0.80
     const want=avgNet*rate-cxlOf(x),g=gross(x);if(!(g>0))return;const f=want/g;
     wonOf(x).forEach(c=>{c.increase=Math.max(1000,Math.round(c.increase*f/1000)*1000);c.expected=c.increase})});
   return{cases,reps,reviews};
@@ -1410,11 +1491,13 @@ function start(){if(started)return;started=true;
   applyTheme(LS.get('theme','light'));applyRole();$('fDate').value=today();
   const h=location.hash.match(/^#case-(.+)$/);
   go('cases');   // 開いたときは毎回「案件」から（案件のリンクで開いたときはその案件）
-  renderAll();renderUser();load().then(()=>{renderUser();if(!meNow())askUser();
-    else if(!$('fStaff').dataset.touched)$('fStaff').value=meNow();
+  renderAll();renderUser();load().then(async()=>{renderUser();
+    if(isMaster()&&!S.settings.staff.includes(ME.name)){const n={...S.settings,staff:[...S.settings.staff,ME.name]};const b=db.batch();b.set(db.collection(C.settings).doc('main'),n);if(okr(await commit(b))){S.settings=n;renderAll()}}   // 最初の管理者は自動で担当者に入る
+    if(meNow()&&S.settings.staff.includes(meNow())&&!$('fStaff').dataset.touched)$('fStaff').value=meNow();
     if(h)showCase(decodeURIComponent(h[1]))});
 }
-if(unlocked()){$('lock').hidden=true;start()}else{applyTheme(LS.get('theme','light'));setTimeout(()=>$('passInput').focus(),50)}
+applyTheme(LS.get('theme','light'));
+if(auth)auth.onAuthStateChanged(u=>{if(started&&!u){location.replace(location.pathname+location.search);return}if(!started)checkUser(u)});
 
 </script>
 </body>
