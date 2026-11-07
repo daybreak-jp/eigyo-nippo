@@ -1537,7 +1537,13 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden){hiddenAt=D
 
 /* 隠しコマンド：タイトル「営業日報」を2秒以内に5回タップ／PCは Ctrl+Shift+L（管理者のみ反応） */
 let tapN=0,tapT=0;
-$('brand').addEventListener('click',()=>{const n=Date.now();tapN=n-tapT<2000?tapN+1:1;tapT=n;if(tapN>=5){tapN=0;openAccessLog()}});
+/* iPhoneは素早いタップがダブルタップ拡大に取られて click が来ないことがあるので、指を離した瞬間（pointerup）で数える。長押し（1秒）でも開く */
+(()=>{const br=$('brand');br.style.touchAction='manipulation';br.style.userSelect=br.style.webkitUserSelect='none';br.style.webkitTouchCallout='none';br.style.cursor='pointer';
+  let lp=0;
+  br.addEventListener('pointerdown',()=>{clearTimeout(lp);lp=setTimeout(()=>{tapN=0;openAccessLog()},1000)});
+  ['pointerleave','pointercancel'].forEach(t=>br.addEventListener(t,()=>clearTimeout(lp)));
+  br.addEventListener('pointerup',e=>{clearTimeout(lp);const n=Date.now();tapN=n-tapT<3000?tapN+1:1;tapT=n;if(tapN>=5){tapN=0;openAccessLog()}});
+  br.addEventListener('contextmenu',e=>e.preventDefault())})();
 document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.shiftKey&&(e.key==='L'||e.key==='l')){e.preventDefault();openAccessLog()}});
 const AL={days:30,rows:[]};
 const EVJ={login:'ログイン',open:'アクセス',logout:'ログアウト',fail:'失敗',denied:'未登録'};
